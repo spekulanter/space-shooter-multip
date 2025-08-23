@@ -8,9 +8,21 @@ interface GameCanvasProps {
   gameMode: GameMode;
   onGameOver: (score: number) => void;
   onPause: () => void;
+  onWaveComplete?: (score: number, wave: number, playerShips: Ship[]) => void;
+  initialShips?: Ship[];
+  initialScore?: number;
+  initialWave?: number;
 }
 
-export function GameCanvas({ gameMode, onGameOver, onPause }: GameCanvasProps) {
+export function GameCanvas({ 
+  gameMode, 
+  onGameOver, 
+  onPause, 
+  onWaveComplete,
+  initialShips,
+  initialScore = 0,
+  initialWave = 1
+}: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [bestScore, setBestScore] = useKV('best-score', 0);
@@ -36,13 +48,13 @@ export function GameCanvas({ gameMode, onGameOver, onPause }: GameCanvasProps) {
 
     // Initialize game state
     const initialState: GameState = {
-      ships: createInitialShips(gameMode),
+      ships: initialShips || createInitialShips(gameMode),
       enemies: [],
       projectiles: [],
       particles: [],
       powerUps: [],
-      wave: 1,
-      score: 0,
+      wave: initialWave,
+      score: initialScore,
       gameMode,
       gameStatus: GameStatus.PLAYING,
       canvas: {
@@ -67,16 +79,23 @@ export function GameCanvas({ gameMode, onGameOver, onPause }: GameCanvasProps) {
 
         // Check win condition (wave complete)
         if (newState.enemies.length === 0 && newState.wave < 10) {
-          // Start next wave after a short delay
-          setTimeout(() => {
-            setGameState(currentState => {
-              if (!currentState) return null;
-              return {
-                ...currentState,
-                wave: currentState.wave + 1
-              };
-            });
-          }, 2000);
+          // Call wave complete handler if provided
+          if (onWaveComplete) {
+            const playerShips = newState.ships.filter(ship => ship.isPlayer);
+            onWaveComplete(newState.score, newState.wave + 1, playerShips);
+            return { ...newState, gameStatus: GameStatus.UPGRADING };
+          } else {
+            // Start next wave after a short delay (fallback)
+            setTimeout(() => {
+              setGameState(currentState => {
+                if (!currentState) return null;
+                return {
+                  ...currentState,
+                  wave: currentState.wave + 1
+                };
+              });
+            }, 2000);
+          }
         }
 
         // Check game over condition
@@ -111,7 +130,7 @@ export function GameCanvas({ gameMode, onGameOver, onPause }: GameCanvasProps) {
       }
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [gameMode, bestScore, setBestScore, onGameOver, onPause]);
+  }, [gameMode, bestScore, setBestScore, onGameOver, onPause, onWaveComplete, initialShips, initialScore, initialWave]);
 
   // Render game
   useEffect(() => {

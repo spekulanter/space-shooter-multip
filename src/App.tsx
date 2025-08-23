@@ -15,7 +15,7 @@ function App() {
   const [currentWave, setCurrentWave] = useState(1);
   const [upgradePoints, setUpgradePoints] = useState(0);
   const [ships, setShips] = useState<Ship[]>([]);
-  const [bestScore] = useKV('best-score', 0);
+  const [bestScore, setBestScore] = useKV('best-score', 0);
 
   const handleStartGame = (mode: GameMode) => {
     setGameMode(mode);
@@ -32,6 +32,7 @@ function App() {
     setGameStatus(GameStatus.GAME_OVER);
     
     if (finalScore > bestScore) {
+      setBestScore(finalScore);
       toast.success(`New best score: ${finalScore.toLocaleString()}!`);
     } else {
       toast.info(`Game Over! Score: ${finalScore.toLocaleString()}`);
@@ -128,6 +129,10 @@ function App() {
           gameMode={gameMode}
           onGameOver={handleGameOver}
           onPause={handlePause}
+          onWaveComplete={handleWaveComplete}
+          initialShips={ships.length > 0 ? ships : undefined}
+          initialScore={currentScore}
+          initialWave={currentWave}
         />
       )}
 
